@@ -1,0 +1,11 @@
+movie_id,title,genres,predicted_rating
+318,"Shawshank Redemption, The (1994)",Drama,4.448436184436523
+1234,"Sting, The (1973)",Comedy|Crime,4.426062831148397
+53,Lamerica (1994),Drama,4.387750467515844
+3245,I Am Cuba (Soy Cuba/Ya Kuba) (1964),Drama,4.383261247221579
+2503,"Apple, The (Sib) (1998)",Drama,4.378038974211253
+1193,One Flew Over the Cuckoo's Nest (1975),Drama,4.369218512285277
+3147,"Green Mile, The (1999)",Drama|Thriller,4.354212969103602
+904,Rear Window (1954),Mystery|Thriller,4.329911948580968
+593,"Silence of the Lambs, The (1991)",Drama|Thriller,4.326570228331701
+260,Star Wars: Episode IV - A New Hope (1977),Action|Adventure|Fantasy|Sci-Fi,4.305642750487853
