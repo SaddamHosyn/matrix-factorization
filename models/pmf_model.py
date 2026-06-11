@@ -93,19 +93,22 @@ class PMF:
         """
         Predict rating for a given user_id and item_id.
         """
-        if (user_id not in self.user_id_to_index) or (item_id not in self.item_id_to_index):
+        if (user_id not in self.user_id_to_index) or (
+            item_id not in self.item_id_to_index
+        ):
             return None
 
         u = self.user_id_to_index[user_id]
         i = self.item_id_to_index[item_id]
         return float(np.dot(self.U[u], self.V[i]))
 
+
 def train_pmf(
     data_dir: str = "data",
     reports_dir: str = "reports",
-    num_factors: int = 50,
-    learning_rate: float = 0.01,
-    reg: float = 0.1,
+    num_factors: int = 75,
+    learning_rate: float = 0.005,
+    reg: float = 0.05,
     num_epochs: int = 30,
 ):
     # Get train/test ratings
@@ -134,7 +137,9 @@ def train_pmf(
     # Convergence plot (MSE vs iteration)
     os.makedirs(reports_dir, exist_ok=True)
     plt.figure()
-    plt.plot(range(1, len(pmf.train_mse_history) + 1), pmf.train_mse_history, marker="o")
+    plt.plot(
+        range(1, len(pmf.train_mse_history) + 1), pmf.train_mse_history, marker="o"
+    )
     plt.xlabel("Epoch")
     plt.ylabel("Train MSE")
     plt.title("PMF convergence")
@@ -155,7 +160,14 @@ def train_pmf(
             except json.JSONDecodeError:
                 metrics = {}
 
+    # Store PMF RMSE
     metrics["PMF_RMSE"] = pmf_rmse
+
+    # Compute improvement percentage if SVD_RMSE is available
+    svd_rmse = metrics.get("SVD_RMSE", None)
+    if svd_rmse is not None and svd_rmse > 0:
+        improvement = (svd_rmse - pmf_rmse) / svd_rmse * 100.0
+        metrics["PMF_vs_SVD_improvement_%"] = improvement
 
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
@@ -165,8 +177,9 @@ def train_pmf(
 
 def compute_pmf_rmse_on_test(pmf: PMF, test_df: pd.DataFrame) -> float:
     # Filter to users/items known to PMF
-    mask = test_df["user_id"].isin(pmf.user_id_to_index.keys()) & \
-           test_df["movie_id"].isin(pmf.item_id_to_index.keys())
+    mask = test_df["user_id"].isin(pmf.user_id_to_index.keys()) & test_df[
+        "movie_id"
+    ].isin(pmf.item_id_to_index.keys())
     test_filtered = test_df[mask].copy()
 
     preds = []

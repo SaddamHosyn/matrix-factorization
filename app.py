@@ -86,21 +86,25 @@ def main():
     k = st.sidebar.slider(
         "SVD latent factors (k)", min_value=10, max_value=200, value=50, step=10
     )
+
     num_factors = st.sidebar.slider(
-        "PMF latent factors", min_value=10, max_value=200, value=50, step=10
+        "PMF latent factors", min_value=10, max_value=200, value=75, step=5
     )
+
     learning_rate = st.sidebar.select_slider(
         "PMF learning rate",
         options=[0.001, 0.005, 0.01, 0.02],
-        value=0.01,
+        value=0.005,
     )
+
     reg = st.sidebar.select_slider(
         "PMF regularization",
         options=[0.01, 0.05, 0.1, 0.2],
-        value=0.1,
+        value=0.05,
     )
+
     num_epochs = st.sidebar.slider(
-        "PMF epochs", min_value=5, max_value=50, value=10, step=5
+        "PMF epochs", min_value=5, max_value=50, value=30, step=5
     )
 
     if user_id not in valid_user_ids:
