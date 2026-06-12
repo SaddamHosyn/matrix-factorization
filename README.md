@@ -216,3 +216,12 @@ Recommendation tables and plots update according to the selected user and curren
 ## Learning Outcome
 
 This project shows how matrix factorization methods can be applied in recommender systems, how to evaluate them with RMSE, and how to compare different models (SVD vs PMF) in both offline metrics and an interactive UI.
+
+
+
+Latent factor 0 appears to capture comedy-oriented content: the top movies on this factor are almost all comedies (e.g., Dumb & Dumber, What About Bob?).
+Latent factor 1 seems to emphasize darker, more serious content with action, horror, or drama elements (e.g., The 13th Warrior, The Haunting, Phantoms).
+
+User 1’s top ratings are dominated by dramas (One Flew Over the Cuckoo’s Nest, Awakenings, Rain Man) and animated children’s/musical films (Toy Story, Beauty and the Beast, A Bug’s Life).
+PMF recommends other high-quality dramas (Shawshank Redemption, Schindler’s List, Gone with the Wind, Inherit the Wind) and additional animated children’s films (Bambi, The Lion King).
+This shows that the latent factors learned by PMF successfully capture user 1’s taste for emotional dramas and family-oriented animated films.

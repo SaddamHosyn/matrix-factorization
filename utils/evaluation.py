@@ -216,3 +216,21 @@ def plot_user_comparison(
     plt.tight_layout()
     plt.savefig(os.path.join(reports_dir, "user_comparison.png"), bbox_inches="tight")
     plt.close()
+
+
+def compute_baseline_rmse(data_dir: str = "data") -> float:
+    """
+    Compute RMSE of a simple baseline:
+    predict the global mean rating for every user-movie pair.
+    """
+    train_df, test_df = train_test_split_ratings(data_dir=data_dir)
+
+    # Global mean baseline
+    global_mean = train_df["rating"].mean()
+
+    preds = np.full_like(test_df["rating"].values, fill_value=global_mean, dtype=float)
+    actuals = test_df["rating"].values
+
+    mse = np.mean((preds - actuals) ** 2)
+    rmse = float(np.sqrt(mse))
+    return rmse

@@ -30,6 +30,11 @@ class PMF:
         self.U = 0.01 * self.random_state.randn(num_users, num_factors)
         self.V = 0.01 * self.random_state.randn(num_items, num_factors)
 
+        # Bias terms and global mean
+        self.user_bias = np.zeros(num_users)
+        self.item_bias = np.zeros(num_items)
+        self.global_mean = 0.0
+
         self.train_mse_history = []
 
     def fit(self, train_df: pd.DataFrame):
@@ -54,6 +59,9 @@ class PMF:
         item_idx = train_df["movie_id"].map(self.item_id_to_index).values
         ratings = train_df["rating"].values
 
+        # Global mean rating
+        self.global_mean = np.mean(ratings)
+
         n_ratings = len(ratings)
 
         for epoch in range(self.num_epochs):
@@ -65,8 +73,13 @@ class PMF:
                 i = item_idx[idx]
                 r_ui = ratings[idx]
 
-                # Prediction: U_u^T V_i
-                pred = np.dot(self.U[u], self.V[i])
+                # Prediction with biases: mu + bu + bi + U_u^T V_i
+                pred = (
+                    self.global_mean
+                    + self.user_bias[u]
+                    + self.item_bias[i]
+                    + np.dot(self.U[u], self.V[i])
+                )
 
                 # Error
                 err = r_ui - pred
@@ -74,10 +87,16 @@ class PMF:
                 # Gradients with L2 regularization
                 grad_Uu = -2 * err * self.V[i] + 2 * self.reg * self.U[u]
                 grad_Vi = -2 * err * self.U[u] + 2 * self.reg * self.V[i]
+                grad_bu = -2 * err + 2 * self.reg * self.user_bias[u]
+                grad_bi = -2 * err + 2 * self.reg * self.item_bias[i]
 
-                # Update
+                # Update latent factors
                 self.U[u] -= self.learning_rate * grad_Uu
                 self.V[i] -= self.learning_rate * grad_Vi
+
+                # Update biases
+                self.user_bias[u] -= self.learning_rate * grad_bu
+                self.item_bias[i] -= self.learning_rate * grad_bi
 
             # Compute train MSE at end of epoch
             mse = self._compute_mse(user_idx, item_idx, ratings)
@@ -85,7 +104,12 @@ class PMF:
             print(f"Epoch {epoch+1}/{self.num_epochs} - MSE: {mse:.4f}")
 
     def _compute_mse(self, user_idx, item_idx, ratings):
-        preds = np.sum(self.U[user_idx] * self.V[item_idx], axis=1)
+        preds = (
+            self.global_mean
+            + self.user_bias[user_idx]
+            + self.item_bias[item_idx]
+            + np.sum(self.U[user_idx] * self.V[item_idx], axis=1)
+        )
         mse = np.mean((ratings - preds) ** 2)
         return mse
 
@@ -100,7 +124,12 @@ class PMF:
 
         u = self.user_id_to_index[user_id]
         i = self.item_id_to_index[item_id]
-        return float(np.dot(self.U[u], self.V[i]))
+        return float(
+            self.global_mean
+            + self.user_bias[u]
+            + self.item_bias[i]
+            + np.dot(self.U[u], self.V[i])
+        )
 
 
 def train_pmf(

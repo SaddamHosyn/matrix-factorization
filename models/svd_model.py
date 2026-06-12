@@ -18,6 +18,7 @@ def train_svd(
 
     Steps:
     - Build normalized user-item matrix from train ratings
+    - Estimate item bias from train ratings
     - Apply truncated SVD (k latent factors)
     - Reconstruct full predicted rating matrix
     - Compute RMSE on test set
@@ -31,39 +32,55 @@ def train_svd(
         random_state=42,
     )
 
-    # Keep track of the mapping between user_id/movie_id and matrix indices
+    # Keep track of mapping between user_id/movie_id and matrix indices
     user_ids = norm_matrix.index.values
     movie_ids = norm_matrix.columns.values
 
-    # Fill NaNs with 0 for SVD (since we mean-centered, 0 ≈ user mean)
-    R = norm_matrix.fillna(0).values
+    # Step 2: estimate item bias from train data after user-mean centering
+    train_with_user_mean = train_df.copy()
+    train_with_user_mean["user_mean"] = train_with_user_mean["user_id"].map(user_means)
+    train_with_user_mean["residual"] = (
+        train_with_user_mean["rating"] - train_with_user_mean["user_mean"]
+    )
 
-    # Step 2: truncated SVD
-    # R ≈ U * S * Vt, with rank k
+    item_bias = train_with_user_mean.groupby("movie_id")["residual"].mean()
+
+    # Align item bias to matrix column order, fill unseen bias with 0
+    item_bias_array = (
+        pd.Series(movie_ids, index=movie_ids)
+        .map(item_bias)
+        .fillna(0)
+        .values.reshape(1, -1)
+    )
+
+    # Step 3: subtract item bias from normalized matrix
+    norm_matrix_adjusted = norm_matrix.subtract(item_bias_array.flatten(), axis=1)
+
+    # Fill NaNs with 0 for SVD
+    R = norm_matrix_adjusted.fillna(0).values
+
+    # Step 4: truncated SVD
     U, sigma, Vt = svds(R, k=k)
     sigma = np.diag(sigma)
 
-    # Step 3: reconstruct normalized ratings
-    R_hat_norm = np.dot(np.dot(U, sigma), Vt)
+    # Step 5: reconstruct adjusted normalized ratings
+    R_hat_adjusted = np.dot(np.dot(U, sigma), Vt)
 
-    # Step 4: add user means back to get predictions on original rating scale
-    # user_means is a Series indexed by user_id, need to align with matrix row order
+    # Step 6: add user means and item bias back
     user_mean_array = user_means.loc[user_ids].values.reshape(-1, 1)
-    R_hat = R_hat_norm + user_mean_array
+    R_hat = R_hat_adjusted + user_mean_array + item_bias_array
 
-    # Convert back to DataFrame with user_id/movie_id labels
+    # Convert back to DataFrame
     R_hat_df = pd.DataFrame(R_hat, index=user_ids, columns=movie_ids)
 
-    # Step 5: compute RMSE on test set
+    # Step 7: compute RMSE on test set
     rmse = compute_rmse_on_test(test_df, R_hat_df)
 
-    # Step 6: save predictions and metrics
+    # Step 8: save predictions and metrics
     os.makedirs(reports_dir, exist_ok=True)
 
-    # Save full predicted rating matrix
     np.save(os.path.join(reports_dir, "svd_predictions.npy"), R_hat)
 
-    # Update model_metrics.json
     metrics_path = os.path.join(reports_dir, "model_metrics.json")
     metrics = {}
     if os.path.exists(metrics_path):
@@ -88,16 +105,20 @@ def compute_rmse_on_test(test_df: pd.DataFrame, pred_matrix: pd.DataFrame) -> fl
     test_df: columns user_id, movie_id, rating
     pred_matrix: rows user_id, columns movie_id, values predicted rating
     """
-    # Filter to only user/movie pairs present in the prediction matrix
-    mask = test_df["user_id"].isin(pred_matrix.index) & test_df["movie_id"].isin(pred_matrix.columns)
+    mask = test_df["user_id"].isin(pred_matrix.index) & test_df["movie_id"].isin(
+        pred_matrix.columns
+    )
     test_filtered = test_df[mask].copy()
 
-    # Get predictions for each (user, movie) in test_filtered
     preds = []
     for row in test_filtered.itertuples(index=False):
         u = row.user_id
         m = row.movie_id
-        preds.append(pred_matrix.at[u, m])
+        pred = pred_matrix.at[u, m]
+
+        # Clip predictions to valid MovieLens range
+        pred = np.clip(pred, 1.0, 5.0)
+        preds.append(pred)
 
     preds = np.array(preds)
     actuals = test_filtered["rating"].values
