@@ -1,3 +1,4 @@
+from fileinput import filename
 import os
 import json
 import numpy as np
@@ -133,9 +134,8 @@ def plot_top_recommendations(
 
     os.makedirs(reports_dir, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(
-        os.path.join(reports_dir, "top_recommendations.png"), bbox_inches="tight"
-    )
+    filename = f"user_{user_id}_top_recommendations_{model}.png"
+    plt.savefig(os.path.join(reports_dir, filename), bbox_inches="tight")
     plt.close()
 
 
@@ -214,7 +214,8 @@ def plot_user_comparison(
 
     os.makedirs(reports_dir, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(os.path.join(reports_dir, "user_comparison.png"), bbox_inches="tight")
+    filename = f"user_{user_id}_comparison.png"
+    plt.savefig(os.path.join(reports_dir, filename), bbox_inches="tight")
     plt.close()
 
 
